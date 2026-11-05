@@ -1,4 +1,4 @@
-import type { ProfessionId, IconName, Difficulty } from "../data/professions";
+import type { ProfessionId, IconName, Difficulty, HabitType } from "../data/professions";
 
 interface GeneratedHabit {
   title: string;
@@ -6,11 +6,14 @@ interface GeneratedHabit {
   minutes: number;
   difficulty: Difficulty;
   icon: IconName;
+  type: HabitType;
 }
+
+type UntypedGeneratedHabit = Omit<GeneratedHabit, "type">;
 
 interface GoalTemplate {
   matchers: string[];
-  habits: GeneratedHabit[];
+  habits: UntypedGeneratedHabit[];
 }
 
 const templates: GoalTemplate[] = [
@@ -18,7 +21,7 @@ const templates: GoalTemplate[] = [
     matchers: ["senior", "сеньор", "лид", "lead", "архитект"],
     habits: [
       { title: "Изучение паттернов проектирования", category: "Архитектура", minutes: 30, difficulty: "hard", icon: "LayoutGrid" },
-      { title: "Code review коллеги", category: "Качество", minutes: 20, difficulty: "medium", icon: "GitBranch" },
+      { title: "Разбор кода коллеги", category: "Качество", minutes: 20, difficulty: "medium", icon: "GitBranch" },
       { title: "Написание технического документа", category: "Документация", minutes: 25, difficulty: "medium", icon: "FileText" },
     ],
   },
@@ -34,7 +37,7 @@ const templates: GoalTemplate[] = [
     matchers: ["дизайн", "ux", "ui", "интерфейс", "пользователь"],
     habits: [
       { title: "Анализ UX одного продукта", category: "Исследование", minutes: 20, difficulty: "medium", icon: "Smartphone" },
-      { title: "Скetch экрана в фигме", category: "Практика", minutes: 30, difficulty: "medium", icon: "Palette" },
+      { title: "Эскиз экрана в Фигме", category: "Практика", minutes: 30, difficulty: "medium", icon: "Palette" },
       { title: "Чтение статьи по UX", category: "Обучение", minutes: 15, difficulty: "easy", icon: "FileText" },
     ],
   },
@@ -57,9 +60,9 @@ const templates: GoalTemplate[] = [
   {
     matchers: ["soft skill", "команд", "communicat", "общение", "презентац"],
     habits: [
-      { title: "Презентация своей работы команде", category: "Soft Skills", minutes: 20, difficulty: "medium", icon: "Users" },
+      { title: "Презентация своей работы команде", category: "Коммуникация", minutes: 20, difficulty: "medium", icon: "Users" },
       { title: "Чтение книги по коммуникации", category: "Обучение", minutes: 20, difficulty: "easy", icon: "FileText" },
-      { title: "Спарринг идей с коллегой", category: "Soft Skills", minutes: 15, difficulty: "medium", icon: "Users" },
+      { title: "Обсуждение идей с коллегой", category: "Коммуникация", minutes: 15, difficulty: "medium", icon: "Users" },
     ],
   },
   {
@@ -80,7 +83,7 @@ const templates: GoalTemplate[] = [
   },
 ];
 
-const fallbackHabits: GeneratedHabit[] = [
+const fallbackHabits: UntypedGeneratedHabit[] = [
   { title: "Глубокая работа над задачей 30 мин", category: "Фокус", minutes: 30, difficulty: "hard", icon: "Target" },
   { title: "Изучение новой темы по специальности", category: "Обучение", minutes: 20, difficulty: "medium", icon: "FileText" },
   { title: "Рефлексия дня в блокноте", category: "Развитие", minutes: 10, difficulty: "easy", icon: "PenToolIcon" },
@@ -88,14 +91,21 @@ const fallbackHabits: GeneratedHabit[] = [
 
 export function generateHabits(goal: string, _professionId: ProfessionId): GeneratedHabit[] {
   const lower = goal.toLowerCase().trim();
-  if (!lower) return fallbackHabits;
+  if (!lower) return tagResults(fallbackHabits, lower);
 
   for (const template of templates) {
     if (template.matchers.some((m) => lower.includes(m))) {
-      return template.habits;
+      return tagResults(template.habits, lower);
     }
   }
-  return fallbackHabits;
+  return tagResults(fallbackHabits, lower);
+}
+
+function tagResults(items: UntypedGeneratedHabit[], goal: string): GeneratedHabit[] {
+  const preferred: HabitType[] = /здоров|выгор|устал|восстанов/.test(goal)
+    ? ["passive", "active", "strategy"]
+    : ["active", "passive", "strategy"];
+  return items.map((item, index) => ({ ...item, type: preferred[index % preferred.length] }));
 }
 
 export type { GeneratedHabit };

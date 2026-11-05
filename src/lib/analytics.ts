@@ -1,6 +1,7 @@
 import type { Habit } from "./store";
 import { computeStreak } from "./dates";
 import { getLevelInfo, type Level } from "./gamification";
+import { todayKey } from "./dates";
 
 export interface CategoryStat {
   category: string;
@@ -50,7 +51,8 @@ export function computeBestStreak(activeDates: string[]): number {
 export function computeAnalytics(
   habits: Habit[],
   completedDates: Record<string, string[]>,
-  xp: number
+  xp: number,
+  today = todayKey()
 ): AnalyticsData {
   const allDateKeys = Object.keys(completedDates).sort();
   const totalCompleted = allDateKeys.reduce(
@@ -66,18 +68,13 @@ export function computeAnalytics(
   const currentStreak = computeStreak(activeDates);
   const bestStreak = computeBestStreak(activeDates);
 
-  // Success rate: completed today / total habits, averaged over active days
+  // Current success rate is today's completed habits divided by today's list.
+  const validHabitIds = new Set(habits.map((habit) => habit.id));
+  const completedToday = new Set(
+    (completedDates[today] ?? []).filter((id) => validHabitIds.has(id))
+  ).size;
   const successRate =
-    totalDaysActive > 0
-      ? Math.round(
-          (allDateKeys.reduce((sum, key) => {
-            const done = completedDates[key]?.length ?? 0;
-            return sum + (habits.length > 0 ? done / habits.length : 0);
-          }, 0) /
-            totalDaysActive) *
-            100
-        )
-      : 0;
+    habits.length > 0 ? Math.round((completedToday / habits.length) * 100) : 0;
 
   // Category breakdown based on all habits
   const categoryCounts = new Map<string, number>();

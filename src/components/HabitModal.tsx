@@ -7,8 +7,11 @@ import {
   type IconName,
   type Difficulty,
   type ProfessionId,
+  habitTypes,
+  habitTypeLabels,
+  type HabitType,
 } from "../data/professions";
-import type { Habit } from "../lib/store";
+import type { Habit, HabitDraft } from "../lib/store";
 import { generateHabits, type GeneratedHabit } from "../lib/aiGenerator";
 import { X, Sparkles, Wand2, Plus, Clock } from "lucide-react";
 
@@ -39,13 +42,8 @@ const minuteChoices = [5, 10, 15, 20, 25, 30, 45, 60, 90];
 interface Props {
   habit: Habit | null; // null = add mode
   professionId: ProfessionId;
-  onSave: (data: {
-    title: string;
-    category: string;
-    minutes: number;
-    difficulty: Difficulty;
-    icon: IconName;
-  }) => void;
+  onSave: (data: HabitDraft) => void;
+  onSaveMany: (habits: HabitDraft[]) => void;
   onClose: () => void;
 }
 
@@ -53,6 +51,7 @@ export default function HabitModal({
   habit,
   professionId,
   onSave,
+  onSaveMany,
   onClose,
 }: Props) {
   const [title, setTitle] = useState("");
@@ -60,6 +59,7 @@ export default function HabitModal({
   const [minutes, setMinutes] = useState(15);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [icon, setIcon] = useState<IconName>("Target");
+  const [type, setType] = useState<HabitType>("active");
 
   // AI generator state
   const [aiOpen, setAiOpen] = useState(false);
@@ -74,6 +74,7 @@ export default function HabitModal({
       setMinutes(habit.minutes);
       setDifficulty(habit.difficulty);
       setIcon(habit.icon);
+      setType(habit.type);
     }
   }, [habit]);
 
@@ -88,6 +89,7 @@ export default function HabitModal({
       minutes,
       difficulty,
       icon,
+      type,
     });
   };
 
@@ -95,12 +97,11 @@ export default function HabitModal({
     if (!aiGoal.trim()) return;
     setAiLoading(true);
     setAiResults(null);
-    // Simulate AI processing delay
-    setTimeout(() => {
-      const results = generateHabits(aiGoal, professionId);
-      setAiResults(results);
+    try {
+      setAiResults(generateHabits(aiGoal, professionId));
+    } finally {
       setAiLoading(false);
-    }, 900);
+    }
   };
 
   const applyGenerated = (g: GeneratedHabit) => {
@@ -109,6 +110,7 @@ export default function HabitModal({
     setMinutes(g.minutes);
     setDifficulty(g.difficulty);
     setIcon(g.icon);
+    setType(g.type);
     setAiOpen(false);
     setAiResults(null);
     setAiGoal("");
@@ -158,7 +160,7 @@ export default function HabitModal({
                       Сгенерировать с помощью ИИ
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">
-                      Опишите цель — получите 3 готовые привычки
+                      Локальный подбор по цели — 3 готовые привычки без внешнего сервиса
                     </div>
                   </div>
                   <Sparkles className="w-4 h-4 text-violet-400" />
@@ -179,7 +181,7 @@ export default function HabitModal({
                             type="text"
                             value={aiGoal}
                             onChange={(e) => setAiGoal(e.target.value)}
-                            placeholder="Например: Хочу стать Senior разработчиком"
+                            placeholder="Например: Хочу стать ведущим разработчиком"
                             className="flex-1 rounded-xl border border-ink-700 bg-ink-800 px-3.5 py-2.5 text-sm placeholder:text-zinc-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 transition-colors"
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
@@ -217,7 +219,7 @@ export default function HabitModal({
                           <div className="space-y-2">
                             <div className="text-xs text-zinc-500 flex items-center gap-1.5">
                               <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-                              ИИ предложил {aiResults.length} привычки
+                              Подобрано привычек: {aiResults.length}
                             </div>
                             {aiResults.map((g, i) => {
                               const GIcon = iconMap[g.icon];
@@ -242,6 +244,9 @@ export default function HabitModal({
                                       <span className="text-[11px] text-zinc-500">
                                         {g.category}
                                       </span>
+                                      <span className="text-[11px] text-indigo-300">
+                                        {habitTypeLabels[g.type]}
+                                      </span>
                                       <span className="text-[11px] text-zinc-600">·</span>
                                       <span className="text-[11px] text-zinc-500 flex items-center gap-0.5">
                                         <Clock className="w-3 h-3" />
@@ -258,6 +263,13 @@ export default function HabitModal({
                                 </motion.button>
                               );
                             })}
+                            <button
+                              type="button"
+                              onClick={() => onSaveMany(aiResults)}
+                              className="w-full rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-200 hover:bg-violet-500/20 transition-colors"
+                            >
+                              Добавить все {aiResults.length} привычки
+                            </button>
                           </div>
                         )}
                       </div>
@@ -303,6 +315,24 @@ export default function HabitModal({
                 placeholder="Например: Обучение"
                 className="w-full rounded-xl border border-ink-700 bg-ink-800 px-3.5 py-2.5 text-sm placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
               />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2 block">
+                Тип развития
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {habitTypes.map((habitType) => (
+                  <button
+                    key={habitType}
+                    type="button"
+                    onClick={() => setType(habitType)}
+                    className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${type === habitType ? "border-indigo-500 bg-indigo-500/10 text-indigo-200" : "border-ink-700 bg-ink-800/50 text-zinc-400 hover:border-ink-600"}`}
+                  >
+                    {habitTypeLabels[habitType]}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Minutes */}

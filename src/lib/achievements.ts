@@ -60,14 +60,14 @@ export const achievements: Achievement[] = [
   {
     id: "senior",
     title: "Сеньор",
-    description: "Достичь уровня Senior",
+    description: "Достичь уровня опытного специалиста",
     icon: Trophy,
     color: "from-violet-400 to-indigo-500",
   },
   {
     id: "level_lead",
     title: "Лидер",
-    description: "Достичь уровня Lead",
+    description: "Достичь уровня ведущего архитектора",
     icon: Crown,
     color: "from-amber-300 to-yellow-500",
   },

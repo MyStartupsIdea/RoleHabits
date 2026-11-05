@@ -4,16 +4,19 @@ import {
   achievements,
   getUnlockedAchievements,
   type AchievementStats,
+  type AchievementId,
 } from "../lib/achievements";
 
 interface Props {
   stats: AchievementStats;
+  unlocked: ReadonlySet<AchievementId>;
   onClose: () => void;
 }
 
-export default function AchievementsModal({ stats, onClose }: Props) {
-  const unlocked = getUnlockedAchievements(stats);
-  const unlockedCount = unlocked.size;
+export default function AchievementsModal({ stats, unlocked, onClose }: Props) {
+  const computedUnlocked = getUnlockedAchievements(stats);
+  const visibleUnlocked = new Set([...unlocked, ...computedUnlocked]);
+  const unlockedCount = visibleUnlocked.size;
   const totalCount = achievements.length;
 
   return (
@@ -61,7 +64,7 @@ export default function AchievementsModal({ stats, onClose }: Props) {
         <div className="overflow-y-auto scrollbar-thin px-6 py-5 flex-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {achievements.map((ach, i) => {
-              const isUnlocked = unlocked.has(ach.id);
+              const isUnlocked = visibleUnlocked.has(ach.id);
               const Icon = ach.icon;
               return (
                 <motion.div

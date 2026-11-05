@@ -5,6 +5,8 @@ import {
   difficultyLabels,
   difficultyStyles,
   type Difficulty,
+  habitTypeShortLabels,
+  type HabitType,
 } from "../data/professions";
 
 interface Props {
@@ -13,6 +15,7 @@ interface Props {
   category: string;
   minutes: number;
   difficulty: Difficulty;
+  type: HabitType;
   done: boolean;
   custom: boolean;
   onToggle: () => void;
@@ -32,6 +35,7 @@ export default function HabitCard({
   category,
   minutes,
   difficulty,
+  type,
   done,
   custom,
   onToggle,
@@ -93,6 +97,7 @@ export default function HabitCard({
         </div>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <span className="text-[11px] text-zinc-500">{category}</span>
+          <span className="rounded-full bg-ink-700 px-1.5 py-0.5 text-[10px] text-indigo-200">{habitTypeShortLabels[type]}</span>
           <span className="text-[11px] text-zinc-600">·</span>
           <span className="text-[11px] text-zinc-500 flex items-center gap-1">
             <Clock className="w-3 h-3" />

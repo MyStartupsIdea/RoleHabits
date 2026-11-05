@@ -7,10 +7,10 @@ export type Level = ExperienceLevel | "lead";
 export const levelOrder: Level[] = ["junior", "middle", "senior", "lead"];
 
 export const levelLabels: Record<Level, string> = {
-  junior: "Junior",
-  middle: "Middle",
-  senior: "Senior",
-  lead: "Lead",
+  junior: "Начальный",
+  middle: "Уверенный",
+  senior: "Опытный",
+  lead: "Ведущий архитектор",
 };
 
 export interface LevelInfo {

@@ -36,7 +36,7 @@ export default function StatsModal({ data, onClose }: Props) {
     },
     {
       icon: TrendingUp,
-      label: "Успешность",
+      label: "Успешность сегодня",
       value: `${data.successRate}%`,
       color: "from-indigo-500 to-violet-500",
     },
