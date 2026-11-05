@@ -1,13 +1,18 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Plus, CheckCircle2, Sparkles } from "lucide-react";
 
 import { useStore } from "./lib/store";
-import { XP_PER_HABIT } from "./lib/gamification";
+import { XP_PER_HABIT, getLevelInfo } from "./lib/gamification";
 import { todayKey } from "./lib/dates";
 import { professionMap } from "./data/professions";
 import type { IconName, Difficulty } from "./data/professions";
+import { computeAnalytics } from "./lib/analytics";
+import {
+  getUnlockedAchievements,
+  type AchievementStats,
+} from "./lib/achievements";
 
 import OnboardingWizard from "./components/OnboardingWizard";
 import Header from "./components/Header";
@@ -15,6 +20,8 @@ import HabitCard from "./components/HabitCard";
 import HabitModal from "./components/HabitModal";
 import ConfirmDialog from "./components/ConfirmDialog";
 import StreakHeatmap from "./components/StreakHeatmap";
+import AchievementsModal from "./components/AchievementsModal";
+import StatsModal from "./components/StatsModal";
 
 export default function App() {
   const store = useStore();
@@ -23,6 +30,8 @@ export default function App() {
   const [habitModalOpen, setHabitModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<string | null>(null);
   const [deletingHabit, setDeletingHabit] = useState<string | null>(null);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const celebratedRef = useRef<string | null>(null);
 
   const todayDone = state.completedDates[todayKey()] ?? [];
@@ -46,13 +55,38 @@ export default function App() {
     }
   }, [allDone]);
 
+  // Compute analytics
+  const analytics = useMemo(
+    () => computeAnalytics(state.habits, state.completedDates, state.xp),
+    [state.habits, state.completedDates, state.xp]
+  );
+
+  // Compute achievement stats
+  const achievementStats: AchievementStats = useMemo(
+    () => ({
+      totalCompleted: analytics.totalCompleted,
+      currentStreak: store.streak,
+      bestStreak: state.bestStreak,
+      level: getLevelInfo(state.xp).level,
+      xp: state.xp,
+      customHabitCount: state.habits.filter((h) => h.custom).length,
+      totalHabitCount: state.habits.length,
+      hadEarlyBird: state.hadEarlyBird,
+      hadPerfectDay: state.hadPerfectDay,
+    }),
+    [analytics, store.streak, state]
+  );
+
+  const unlockedAchievements = useMemo(
+    () => getUnlockedAchievements(achievementStats),
+    [achievementStats]
+  );
+
   if (!state.onboarded) {
     return <OnboardingWizard store={store} />;
   }
 
-  const prof = state.professionId
-    ? professionMap[state.professionId]
-    : null;
+  const prof = state.professionId ? professionMap[state.professionId] : null;
   if (!prof || !state.experienceLevel || !state.dailyTarget) {
     return <OnboardingWizard store={store} />;
   }
@@ -86,6 +120,16 @@ export default function App() {
     }
   };
 
+  const handleImport = (data: Partial<typeof state>) => {
+    if (
+      window.confirm(
+        "Импортировать данные? Текущие привычки и прогресс будут заменены."
+      )
+    ) {
+      store.importState(data);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-ink-950">
       <Header
@@ -93,11 +137,16 @@ export default function App() {
         dailyTarget={state.dailyTarget}
         xp={state.xp}
         streak={store.streak}
+        unlockedAchievements={unlockedAchievements.size}
+        state={state}
         onAddHabit={() => {
           setEditingHabit(null);
           setHabitModalOpen(true);
         }}
         onReset={handleReset}
+        onAchievements={() => setAchievementsOpen(true)}
+        onStats={() => setStatsOpen(true)}
+        onImport={handleImport}
       />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -213,12 +262,28 @@ export default function App() {
         {habitModalOpen && (
           <HabitModal
             habit={editingHabitObj}
+            professionId={prof.id}
             onSave={handleHabitSave}
             onClose={() => {
               setHabitModalOpen(false);
               setEditingHabit(null);
             }}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {achievementsOpen && (
+          <AchievementsModal
+            stats={achievementStats}
+            onClose={() => setAchievementsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {statsOpen && (
+          <StatsModal data={analytics} onClose={() => setStatsOpen(false)} />
         )}
       </AnimatePresence>
 

@@ -9,6 +9,7 @@ import type {
 import { professionMap } from "../data/professions";
 import { XP_PER_HABIT } from "./gamification";
 import { todayKey, computeStreak } from "./dates";
+import { computeBestStreak } from "./analytics";
 
 export interface Habit {
   id: string;
@@ -28,6 +29,9 @@ export interface AppState {
   habits: Habit[];
   completedDates: Record<string, string[]>; // dateKey -> habitIds
   xp: number;
+  bestStreak: number;
+  hadEarlyBird: boolean;
+  hadPerfectDay: boolean;
 }
 
 const STORAGE_KEY = "rolehabits:state:v1";
@@ -40,6 +44,9 @@ const initialState: AppState = {
   habits: [],
   completedDates: {},
   xp: 0,
+  bestStreak: 0,
+  hadEarlyBird: false,
+  hadPerfectDay: false,
 };
 
 function loadState(): AppState {
@@ -102,11 +109,14 @@ export function useStore() {
 
   const toggleHabit = useCallback((habitId: string) => {
     const key = todayKey();
+    const hour = new Date().getHours();
     setState((s) => {
       const todayDone = s.completedDates[key] ?? [];
       const isDone = todayDone.includes(habitId);
       let completedDates: Record<string, string[]>;
       let xp = s.xp;
+      let hadEarlyBird = s.hadEarlyBird;
+      let hadPerfectDay = s.hadPerfectDay;
       if (isDone) {
         completedDates = {
           ...s.completedDates,
@@ -119,8 +129,17 @@ export function useStore() {
           [key]: [...todayDone, habitId],
         };
         xp = s.xp + XP_PER_HABIT;
+        if (hour < 9) hadEarlyBird = true;
+        if (completedDates[key].length >= s.habits.length && s.habits.length > 0) {
+          hadPerfectDay = true;
+        }
       }
-      return { ...s, completedDates, xp };
+      // Recompute best streak
+      const activeDates = Object.keys(completedDates).filter(
+        (k) => (completedDates[k] ?? []).length > 0
+      );
+      const bestStreak = Math.max(s.bestStreak, computeBestStreak(activeDates));
+      return { ...s, completedDates, xp, bestStreak, hadEarlyBird, hadPerfectDay };
     });
   }, []);
 
@@ -174,6 +193,10 @@ export function useStore() {
     setState(initialState);
   }, []);
 
+  const importState = useCallback((imported: Partial<AppState>) => {
+    setState(() => ({ ...initialState, ...imported }));
+  }, []);
+
   const activeDates = Object.keys(state.completedDates).filter(
     (k) => (state.completedDates[k] ?? []).length > 0
   );
@@ -190,6 +213,7 @@ export function useStore() {
     updateHabit,
     deleteHabit,
     resetAll,
+    importState,
   };
 }
 
